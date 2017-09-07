@@ -1,0 +1,15 @@
+{
+  "repositories": [
+    { "type": "git", "url": "https://github.com/alkemann/h2l.git" },
+    { "type": "git", "url": "https://github.com/alkemann/jsonapi.git"}
+  ],
+  "autoload": {
+    "psr-4": {
+      "app\\": "app/"
+    }
+  },
+  "require": {
+    "alkemann/h2l": "dev-master",
+    "alkemann/jsonapi": "dev-master"
+  }
+}

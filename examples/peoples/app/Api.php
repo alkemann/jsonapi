@@ -27,7 +27,7 @@ class Api extends Controller
         $person->save();
         return (new Result($person, Http::CODE_CREATED))
             ->withLocation($request->fullUrl('/api/v1/people/' . $person->id))
-        ;
+            ;
     }
 
     public function update_person(Request $request): ?Response
@@ -52,7 +52,7 @@ class Api extends Controller
         $data = People::find();
         return (new Result($data))
             ->withLinks(['self' => $r->fullUrl()])
-        ;
+            ;
     }
 
     public static function version(Request $r): Response
