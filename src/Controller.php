@@ -121,6 +121,10 @@ class Controller
                 $request->header('Content-Type') !== self::CONTENT_JSON_API) {
                 return new Error(Http::CODE_NOT_ACCEPTABLE);
             }
+
+            if ($request->method() === Http::PATCH && $request->header('X-HTTP-Method-Override') === 'PATCH') {
+                $request = $request->withMethod(Http::POST);
+            }
         }
 
         try {
