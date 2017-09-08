@@ -9,7 +9,7 @@ use alkemann\h2l\util\Http;
  *
  * @package alkemann\jsonapi\exceptions
  */
-class JsonApiError extends \Error
+class JsonApiError extends \Exception
 {
     public $http_code = Http::CODE_BAD_REQUEST;
 }

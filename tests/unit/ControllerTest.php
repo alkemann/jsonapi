@@ -4,146 +4,131 @@ namespace alkemann\jsonapi\tests\unit;
 
 use alkemann\h2l\Request;
 use alkemann\h2l\Response;
-use alkemann\h2l\util\Chain;
-use alkemann\h2l\util\Http;
+use alkemann\h2l\response\Json;
+use alkemann\jsonapi\exceptions\InvalidRequestContainer;
+use alkemann\jsonapi\tests\mocks\Posts;
+use alkemann\jsonapi\tests\mocks\Router;
 use alkemann\jsonapi\Controller;
-use alkemann\jsonapi\response\Error;
 
 class ControllerTest extends \PHPUnit_Framework_TestCase
 {
-    public function testMiddlewareCorrectGet()
+    public function testConstructAndRoutes()
     {
-        $response = $this->getMockForAbstractClass(Response::class);
+        $config = [
+            'delimiter' => ':',
+            'router' => Router::class
+        ];
+        $c = new class($config) extends Controller {
+            static $routes = [
+                ['/v1/posts', 'posts', 'GET'],
+                ['%/v1/posts/(?<id>\d+)%', 'post', 'GET']
+            ];
+            public function posts(Request $r): Response {
+                return new Json();
+            }
+            public function post(Request $r): Response {
+                return new Json();
+            }
+        };
 
-        $request = $this->getMockBuilder(Request::class)
-            ->setMethods(['method', 'header', 'url'])
-            ->getMock();
-        $request->expects($this->once())
-            ->method('url')
-            ->willReturn('/api/v1/people');
-        $request->expects($this->exactly(3))
-            ->method('method')
-            ->willReturn(Http::GET);
-        $request->expects($this->once())
-            ->method('header')
-            ->with('Accept')
-            ->willReturn(Controller::CONTENT_JSON_API);
+        $c->addRoutes();
 
-        $chain = $this->getMockBuilder(Chain::class)
-            ->setMethods(['next'])
-            ->getMock();
-        $chain->expects($this->once())
-            ->method('next')
-            ->with($request)
-            ->willReturn($response);
-
-        /**
-         * @var Request $request
-         * @var Chain $chain
-         * @var Response $response
-         */
-
-        $result = Controller::requestMiddleware($request, $chain);
-        $this->assertSame($response, $result);
+        $this->assertEquals(':', Router::$DELIMITER);
+        $this->assertEquals([
+            ['/v1/posts', 'posts', 'GET'],
+            ['%/v1/posts/(?<id>\d+)%', 'post', 'GET']
+        ], $c::$routes);
     }
 
-    public function testMiddlewarePatchOverride()
+    public function testGetAndValidateRequestData()
     {
-        $response = $this->getMockForAbstractClass(Response::class);
+        $data = [
+            'title' => 'Testing',
+            'status' => 'NEW'
+        ];
+        $request_body = json_encode([
+            'data' => [
+                'type' => 'posts',
+                'attributes' => $data
+            ],
+            'jsonapi' => ['version' => '1.0']
+        ]);
 
         $request = $this->getMockBuilder(Request::class)
-            ->setMethods(['method', 'header', 'url', 'withMethod'])
+            ->setMethods(['body', 'method', 'url'])
             ->getMock();
-        $request->expects($this->once())
-            ->method('url')
-            ->willReturn('/api/v1/people');
-        $request->expects($this->exactly(3))
-            ->method('method')
-            ->willReturn(Http::POST);
-        $request->expects($this->exactly(2))
-            ->method('header')
-            ->withConsecutive(['Accept'], ['Content-Type'])
-            ->willReturnOnConsecutiveCalls(Controller::CONTENT_JSON_API, Controller::CONTENT_JSON_API);
+        $request->expects($this->once())->method('body')
+            ->willReturn($request_body);
+        $c = new class extends Controller {};
 
-        $chain = $this->getMockBuilder(Chain::class)
-            ->setMethods(['next'])
-            ->getMock();
-        $chain->expects($this->once())
-            ->method('next')
-            ->with($request)
-            ->willReturn($response);
-
-        /**
-         * @var Request $request
-         * @var Chain $chain
-         * @var Response $response
-         */
-
-        $result = Controller::requestMiddleware($request, $chain);
-        $this->assertEquals($response, $result);
+        $result = $c->getValidatedRequestDataForModel(Posts::class, $request);
+        $this->assertEquals($data, $result);
     }
 
-    public function testMiddlewareMissingAccept()
+    public function testPopulateModelFromRequest()
     {
+        $data = [
+            'title' => 'Testing',
+            'status' => 'NEW'
+        ];
+        $request_body = json_encode([
+            'data' => [
+                'type' => 'posts',
+                'attributes' => $data
+            ],
+            'jsonapi' => ['version' => '1.0']
+        ]);
+
         $request = $this->getMockBuilder(Request::class)
-            ->setMethods(['method', 'header', 'url'])
+            ->setMethods(['body', 'method', 'url'])
             ->getMock();
-        $request->expects($this->once())
-            ->method('url')
-            ->willReturn('/api/v1/people');
-        $request->expects($this->never())->method('method');
-        $request->expects($this->once())
-            ->method('header')
-            ->with('Accept')
-            ->willReturn(Http::CONTENT_JSON);
+        $request->expects($this->once())->method('body')
+            ->willReturn($request_body);
+        $c = new class extends Controller {};
 
-        $chain = $this->getMockBuilder(Chain::class)
-            ->setMethods(['next'])
-            ->getMock();
-        $chain->expects($this->never())
-            ->method('next');
-
-        /**
-         * @var Request $request
-         * @var Chain $chain
-         * @var Response $response
-         */
-
-        $result = Controller::requestMiddleware($request, $chain);
-        $this->assertInstanceOf(Error::class, $result);
-        $this->assertEquals(Http::CODE_NOT_ACCEPTABLE, $result->code());
+        $result = $c->populateModelFromRequest(Posts::class, $request);
+        $this->assertInstanceOf(Posts::class, $result);
+        $this->assertEquals($data, $result->data());
     }
 
-    public function testMiddlewareBadPostContent()
+    public function testBadPostRequestContainer()
     {
+        $request_body = json_encode(['data' => ['title' => 'bad']]);
         $request = $this->getMockBuilder(Request::class)
-            ->setMethods(['method', 'header', 'url'])
+            ->setMethods(['body', 'method', 'url'])
             ->getMock();
         $request->expects($this->once())
-            ->method('url')
-            ->willReturn('/api/v1/people');
-        $request->expects($this->exactly(2))
-            ->method('method')
-            ->willReturn(Http::POST);
-        $request->expects($this->exactly(2))
-            ->method('header')
-            ->withConsecutive(['Accept'], ['Content-Type'])
-            ->willReturnOnConsecutiveCalls(Controller::CONTENT_JSON_API, Http::CONTENT_JSON);
+            ->method('body')
+            ->willReturn($request_body);
 
-        $chain = $this->getMockBuilder(Chain::class)
-            ->setMethods(['next'])
+        $c = new class extends Controller {};
+
+        $this->expectException(InvalidRequestContainer::class);
+        $this->expectExceptionCode('INVALID_CONTAINER');
+        $c->getValidatedRequestDataForModel(Posts::class, $request);
+    }
+
+    public function testPostBodyHasBadType()
+    {
+        $request_body = json_encode([
+            'data' => [
+                'type' => 'author',
+                'attributes' => ['name' => 'John']
+            ],
+            'jsonapi' => ['version' => '1.0']
+        ]);
+
+        $request = $this->getMockBuilder(Request::class)
+            ->setMethods(['body', 'method', 'url'])
             ->getMock();
-        $chain->expects($this->never())
-            ->method('next');
+        $request->expects($this->once())
+            ->method('body')
+            ->willReturn($request_body);
 
-        /**
-         * @var Request $request
-         * @var Chain $chain
-         * @var Response $response
-         */
+        $c = new class extends Controller {};
 
-        $result = Controller::requestMiddleware($request, $chain);
-        $this->assertInstanceOf(Error::class, $result);
-        $this->assertEquals(Http::CODE_NOT_ACCEPTABLE, $result->code());
+        $this->expectException(InvalidRequestContainer::class);
+        $this->expectExceptionCode('INVALID_TYPE');
+        $c->getValidatedRequestDataForModel(Posts::class, $request);
     }
 }

@@ -78,7 +78,7 @@ class Controller
         }
         $type = strtolower((new \ReflectionClass($class))->getShortName());
         if ($data['data']['type'] !== $type) {
-            throw new InvalidRequestContainer("Invalid type for $class in request body", 'INVALID_CONTAINER');
+            throw new InvalidRequestContainer("Invalid type for $class in request body", 'INVALID_TYPE');
         }
         return $data['data']['attributes'];
     }
