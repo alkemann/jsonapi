@@ -3,7 +3,6 @@
 namespace alkemann\jsonapi\response;
 
 use alkemann\h2l\Message;
-use alkemann\h2l\Response;
 use alkemann\h2l\util\Http;
 
 /**
@@ -11,24 +10,16 @@ use alkemann\h2l\util\Http;
  *
  * @package alkemann\jsonapi\response
  */
-class Error extends Response
+class Error extends Result
 {
-    public function __construct(int $http_code, array $errors = [], array $headers = [])
+    public function __construct(array $errors = [], int $http_code = Http::CODE_BAD_REQUEST, array $config = [])
     {
-        $headers['Content-Type'] = 'application/vnd.api+json';
-        $this->message = (new Message)
-            ->withCode($http_code)
-            ->withHeaders($headers)
-        ;
-
-        if ($errors) {
-            $this->message = $this->message->withBody(json_encode(['errors' => $errors]));
-        }
+        parent::__construct($errors, $http_code, $config);
     }
 
-    public function render(): string
+
+    protected function setPayloadInContainer(): array
     {
-        $this->setHeaders();
-        return $this->message->body() ?? '';
+        return ['errors' => $this->data];
     }
 }

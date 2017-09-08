@@ -26,7 +26,7 @@ class ModelTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $result);
     }
 
-    public function testSave()
+    public function testSaveFail()
     {
         $this->expectException(InternalSeverError::class);
         $data = ['id' => 12, 'title' => 'Winning', 'status' => 'ACTIVE'];
@@ -36,5 +36,16 @@ class ModelTest extends \PHPUnit_Framework_TestCase
             }
         };
         $m->save($data);
+    }
+
+    public function testSave()
+    {
+        $data = ['id' => 12, 'title' => 'Winning', 'status' => 'ACTIVE'];
+        $m = new class($data) extends Model {
+            public function saveModel(array $data = [], array $options = []): bool {
+                return true;
+            }
+        };
+        $this->assertTrue($m->save($data));
     }
 }

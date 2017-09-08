@@ -114,12 +114,12 @@ class Controller
 
         if (static::isUrlAPIRequest($url)) {
             if ($request->header('Accept') !== self::CONTENT_JSON_API) {
-                return new Error(Http::CODE_NOT_ACCEPTABLE);
+                return new Error([], Http::CODE_NOT_ACCEPTABLE);
             }
 
             if (($request->method() === Http::PATCH || $request->method() === Http::POST) &&
                 $request->header('Content-Type') !== self::CONTENT_JSON_API) {
-                return new Error(Http::CODE_NOT_ACCEPTABLE);
+                return new Error([], Http::CODE_NOT_ACCEPTABLE);
             }
 
             if ($request->method() === Http::PATCH && $request->header('X-HTTP-Method-Override') === 'PATCH') {
@@ -130,11 +130,11 @@ class Controller
         try {
             $response = $chain->next($request);
         } catch (JsonApiError $e) {
-            return new Error($e->http_code, [[
+            return new Error([[
                 'status' => $e->http_code,
                 'code' => $e->getCode(),
                 'detail' => $e->getMessage()
-            ]]);
+            ]], $e->http_code);
         }
         return $response;
     }

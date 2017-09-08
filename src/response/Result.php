@@ -17,22 +17,31 @@ class Result extends Response
     /**
      * @var array|null
      */
-    private $data;
+    protected $data;
     /**
      * @var array
      */
-    private $meta;
+    protected $meta;
     /**
      * @var array
      */
-    private $links;
+    protected $links;
     /**
      * @var array
      */
-    private $included;
+    protected $included;
+    /**
+     * @var array
+     */
+    protected $config = [];
+    /**
+     * @var Message
+     */
+    protected $message;
 
-    public function __construct($data = [], int $http_code = Http::CODE_OK)
+    public function __construct($data = [], int $http_code = Http::CODE_OK, array $config = [])
     {
+        $this->config = $config;
         $headers['Content-Type'] = 'application/vnd.api+json';
         $this->message = (new Message)
             ->withCode($http_code)
@@ -77,32 +86,32 @@ class Result extends Response
     }
 
     /**
-     * Enforce JsonAPI container, as per http://jsonapi.org/format/#document-structure
+     * Add included data to response container, as per http://jsonapi.org/format/#document-meta
      *
-     * @return string
+     * @param array $included
+     * @return Result
      */
-    protected function container(): string
+    public function withIncluded(array $included): Result
+    {
+        $this->included = $included;
+        return $this;
+    }
+
+    /**
+     * Enforce JsonAPI container, as per http://jsonapi.org/format/#document-structure
+     */
+    protected function setContainer()
     {
         if (empty($this->data)
-            && is_null($this->data) == false
+            && is_null($this->data) === false
             && empty($this->meta)
             && empty($this->included)
             && empty($this->links)
         ) {
-            return '';
+            return;
         }
 
-        if ($this->data instanceof \Generator) {
-            $data = array_values(iterator_to_array($this->data));
-            $this->meta['count'] = sizeof($data);
-        } else {
-            $data = $this->data;
-        }
-
-        $container = [
-            'jsonapi' => ['version' => Controller::VERSION],
-            'data' => $data
-        ];
+        $container = $this->setPayloadInContainer();
         if ($this->meta) {
             $container['meta'] = $this->meta;
         }
@@ -113,7 +122,19 @@ class Result extends Response
             $container['included'] = $this->included;
         }
 
-        return json_encode($container);
+        $container['jsonapi'] = ['version' => Controller::VERSION];
+        $this->message = $this->message->withBody(json_encode($container));
+    }
+
+    protected function setPayloadInContainer(): array
+    {
+        if ($this->data instanceof \Generator) {
+            $data = array_values(iterator_to_array($this->data));
+            $this->meta['count'] = sizeof($data);
+        } else {
+            $data = $this->data;
+        }
+        return compact('data');
     }
 
     /**
@@ -124,6 +145,7 @@ class Result extends Response
     public function render(): string
     {
         $this->setHeaders();
-        return $this->container();
+        $this->setContainer();
+        return $this->message()->body() ?? '';
     }
 }
