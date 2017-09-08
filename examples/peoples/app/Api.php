@@ -34,7 +34,7 @@ class Api extends Controller
     {
         $person = People::get($request->param('id'));
         if (!$person) {
-            return new Error(Http::CODE_NOT_FOUND);
+            return new Error([], Http::CODE_NOT_FOUND);
         }
         $data = $this->getValidatedRequestDataForModel(People::class, $request);
         $person->save($data);

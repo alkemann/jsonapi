@@ -23,13 +23,13 @@ $dispatch->registerMiddle(function(Request $request, Chain $chain): Response {
     try {
         $response = $chain->next($request);
     } catch (InvalidUrl $e) {
-        return new Error(404, [
+        return new Error([
             ['status' => 404, 'code' => $e->getCode(), 'detail' => $e->getMessage()]
-        ]);
+        ], 404);
     } catch (\Throwable $e) {
-        return new Error(500, [
+        return new Error([
             ['status' => 500, 'code' => $e->getCode(), 'detail' => $e->getMessage()]
-        ]);
+        ], 500);
     }
     return $response;
 });
