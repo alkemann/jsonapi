@@ -102,15 +102,6 @@ class Result extends Response
      */
     protected function setContainer()
     {
-        if (empty($this->data)
-            && is_null($this->data) === false
-            && empty($this->meta)
-            && empty($this->included)
-            && empty($this->links)
-        ) {
-            return;
-        }
-
         $container = $this->setPayloadInContainer();
         if ($this->meta) {
             $container['meta'] = $this->meta;

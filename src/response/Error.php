@@ -17,7 +17,6 @@ class Error extends Result
         parent::__construct($errors, $http_code, $config);
     }
 
-
     protected function setPayloadInContainer(): array
     {
         return ['errors' => $this->data];
